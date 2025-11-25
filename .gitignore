@@ -1,1 +1,30 @@
-.ipynb_checkpoints
+# Virtual environment
+.venv/
+
+# Environment variables
+.env
+.env*
+!.env.example
+
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
