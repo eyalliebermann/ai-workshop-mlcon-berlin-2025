@@ -42,5 +42,9 @@ def init_mcp():
 
 
 if __name__ == "__main__":
+    import sys
     mcp = init_mcp()
-    mcp.run(transport="stdio")
+
+    # Use SSE transport if --sse flag is passed, otherwise use stdio
+    transport = "sse" if "--sse" in sys.argv else "stdio"
+    mcp.run(transport=transport)
