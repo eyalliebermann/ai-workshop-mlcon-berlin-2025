@@ -1,3 +1,36 @@
+"""
+TEST SPECIFICATION: Berlin Sober Scene Chat API
+=================================================
+
+REQUIREMENT 1: Chat without memory
+When: User sends a message without a session
+Then: System responds based only on that single message
+
+REQUIREMENT 2: Create conversation sessions
+When: User requests a new session
+Then: System provides a unique session ID
+
+REQUIREMENT 3: Chat with conversation memory
+When: User sends messages within a session
+Then: System remembers all previous exchanges in that session
+
+REQUIREMENT 4: AI receives full conversation context
+When: User has exchanged 2 messages in a session (ask, reply, ask again)
+Then: The second AI request includes the first exchange (first question + first answer)
+
+REQUIREMENT 5: Sessions are independent
+When: User creates multiple sessions
+Then: Each session maintains separate conversation history
+
+REQUIREMENT 6: Invalid session handling
+When: User sends message with non-existent session ID
+Then: System rejects the request
+
+REQUIREMENT 7: System stays on topic
+When: User sends any message
+Then: AI is instructed to focus on Berlin's sober/conscious scene
+"""
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock, patch
@@ -211,7 +244,15 @@ def test_conversation_history_context():
     session_response = client.post("/session")
     session_id = session_response.json()["session_id"]
 
-    with patch('main.client.chat.completions.create', return_value=mock_response) as mock_create:
+    # Capture messages at call time (not after modification)
+    captured_messages = []
+
+    def capture_call(*args, **kwargs):
+        # Store a copy of messages at the time of call
+        captured_messages.append(list(kwargs['messages']))
+        return mock_response
+
+    with patch('main.client.chat.completions.create', side_effect=capture_call) as mock_create:
         # First message
         client.post(
             "/chat",
@@ -225,8 +266,8 @@ def test_conversation_history_context():
         )
 
         # Verify the second call includes full history
-        call_args = mock_create.call_args
-        messages = call_args.kwargs['messages']
+        # captured_messages[1] is what was sent on the second call
+        messages = captured_messages[1]
 
         # Should have: system + user1 + assistant1 + user2
         assert len(messages) == 4
