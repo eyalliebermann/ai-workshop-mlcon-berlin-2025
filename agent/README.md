@@ -99,11 +99,53 @@ Internal interfaces between these components are kept clean from the start. This
 
 The stable contract with the frontend is the protocol layer (REST/SSE/WebSocket). Internally, orchestrator-to-agent and agent-to-tool interfaces follow the same principle: define the contract, swap implementations freely.
 
+### Implementaiton
+
+FastAPI + OpenAI GPT-4o-mini
+
+#### Setup
+
+```bash
+cp .env.example .env
+# Add your OPENAI_API_KEY to .env
+uv sync
+```
+
+#### Run
+
+```bash
+uv run uvicorn main:app --reload --port 8002
+```
+
+#### Test
+
+```bash
+uv run pytest test_main.py -v
+```
+
+#### API
+
+```bash
+curl -X POST http://127.0.0.1:8002/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What sober events are in Berlin?"}'
+```
+
+Docs: http://127.0.0.1:8002/docs
+
+#### Structure
+
+```
+backend/
+├── main.py          # FastAPI app + OpenAI integration
+├── test_main.py     # pytest suite
+├── pyproject.toml   # uv dependencies
+└── .env             # API keys
+```
+
+
 ---
-
-## Decisions Log
-
-*(Sections added as we progress)*
+---
 
 # TODO MERGE THIS IN OR REMOVE 
 
