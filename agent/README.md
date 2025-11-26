@@ -1,4 +1,111 @@
-# Chat Assistant Experiment
+# Corporate Website Assistant - Multi-Agent POC
+
+## Purpose
+Playground for solution architects to experiment with patterns, protocols, and frameworks for conversational AI systems. Uses a corporate website assistant as the reference scenario.
+
+## Why This POC
+Validate production patterns at increasing complexity:
+
+1. Frontend/backend contract for real-time conversation
+2. Agent-LLM integration and prompt management
+3. Tool calling (inline, then MCP)
+4. Real-time bidirectional communication and voice
+5. Multi-agent orchestration and routing
+6. Agent-to-agent communication (A2A)
+
+## Development Approach
+Agile and lean. Each stage ends with a **working demo**. Complexity increases incrementally. We do not build stage N+1 infrastructure until stage N works end-to-end.
+
+**Core principle:** Start simple, introduce complexity only when needed. Commit to protocols, not stacks.
+
+### Stages
+1. Single agent, no tools - establish FE/BE contract via REST + SSE
+2. Single agent + inline tools
+3. Single agent + MCP tools
+4. WebSocket migration + voice
+5. Two agents + orchestrator
+6. Multiple agents + A2A
+
+---
+
+## Stack
+
+### Backend: Python + FastAPI
+
+Python is the natural choice for AI workloads - richer ecosystem, more examples, better library support. FastAPI provides async capabilities and built-in SSE support. LangGraph (when introduced in later stages) is Python-native with mature documentation.
+
+### Frontend: Svelte
+
+Svelte compiles to vanilla JavaScript with no runtime overhead. This matters because the chat UI must eventually be embeddable as a web component in third-party websites. React and Vue ship their runtimes; Svelte compiles away. First-class web component support via `customElement: true`.
+
+For professional appearance: Skeleton UI or shadcn-svelte.
+
+---
+
+## Frontend/Backend Protocol
+
+### Requirements
+- Stream agent responses in real-time (text deltas, tool calls, status)
+- Support tool display instructions from agent to frontend
+- Accept session context from frontend (user state, page context)
+- Authentication-ready
+- Extensible to voice without full rewrite
+
+### Approach: REST + SSE, then WebSocket
+
+Stages 1-3 use REST for requests and SSE for streaming responses. This is simple, standard, and sufficient for text-based interaction. The event schema is designed to port directly to WebSocket when stage 4 introduces voice and true bidirectional communication.
+
+### Initial REST Endpoints
+```
+POST /session              → Initialize session, authenticate, return session ID
+POST /session/{id}/message → Send user message, returns SSE stream
+```
+
+Additional endpoints (context retrieval, history, etc.) will be defined as stages demand them.
+
+### SSE Event Schema
+```
+event: message_delta
+data: {"content": "...", "role": "assistant"}
+
+event: tool_call
+data: {"tool": "...", "args": {...}, "display_hint": "..."}
+
+event: tool_result
+data: {"tool": "...", "result": {...}}
+
+event: error
+data: {"code": "...", "message": "..."}
+
+event: done
+data: {}
+```
+
+This schema transfers unchanged to WebSocket in stage 4, with added binary frames for audio.
+
+---
+
+## Backend Architecture
+
+### Approach: Monolith First, Decompose Later
+
+The backend starts as a single deployable unit containing:
+- Protocol handling (REST/SSE, later WebSocket)
+- Session management and auth
+- Orchestrator logic
+- Agent implementation(s)
+
+Internal interfaces between these components are kept clean from the start. This allows extraction into separate services when complexity warrants it - external tools via MCP, external agents via A2A - without rewriting the core.
+
+The stable contract with the frontend is the protocol layer (REST/SSE/WebSocket). Internally, orchestrator-to-agent and agent-to-tool interfaces follow the same principle: define the contract, swap implementations freely.
+
+---
+
+## Decisions Log
+
+*(Sections added as we progress)*
+
+# TODO MERGE THIS IN OR REMOVE 
 
 Build a simple chat assistant with a backend API and frontend interface.
 
