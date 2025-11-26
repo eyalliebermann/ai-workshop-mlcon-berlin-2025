@@ -1,277 +1,273 @@
-# Corporate Website Assistant - Multi-Agent POC
+# Conversational AI System - Multi-Agent POC
 
 ## Purpose
-Playground for solution architects to experiment with patterns, protocols, and frameworks for conversational AI systems. Uses a corporate website assistant as the reference scenario.
+Playground for solution architects to experiment with patterns, protocols, and frameworks for conversational AI systems. Current implementation: Berlin sober scene assistant with conversation memory.
 
-## Why This POC
-Validate production patterns at increasing complexity:
-
-1. Frontend/backend contract for real-time conversation
-2. Agent-LLM integration and prompt management
-3. Tool calling (inline, then MCP)
-4. Real-time bidirectional communication and voice
-5. Multi-agent orchestration and routing
-6. Agent-to-agent communication (A2A)
-
-## Development Approach
-Agile and lean. Each stage ends with a **working demo**. Complexity increases incrementally. We do not build stage N+1 infrastructure until stage N works end-to-end.
+## Development Philosophy
+Agile and lean. Each stage ends with a **working demo**. Complexity increases incrementally.
 
 **Core principle:** Start simple, introduce complexity only when needed. Commit to protocols, not stacks.
 
-### Stages
-1. Single agent, no tools - establish FE/BE contract via REST + SSE
-2. Single agent + inline tools
-3. Single agent + MCP tools
-4. WebSocket migration + voice
-5. Two agents + orchestrator
-6. Multiple agents + A2A
+## Roadmap
+
+### Complexity Stages
+1. ✅ Single agent, conversation memory - REST protocol established
+2. ⏭️ Server-sent events (SSE) for streaming responses
+3. Single agent + inline tools
+4. Single agent + MCP tools
+5. WebSocket migration + voice
+6. Multi-agent orchestration
+7. Agent-to-agent communication (A2A)
+
+### Stack Rationale
+
+**Backend: Python + FastAPI**
+Python's AI ecosystem is unmatched. FastAPI provides async capabilities and SSE support. LangGraph (later stages) is Python-native.
+
+**Frontend: Svelte** (planned)
+Compiles to vanilla JavaScript with no runtime. Critical for web component embeddability in third-party sites. Current implementation uses plain HTML/JS.
 
 ---
 
-## Stack
+## Getting Started
 
-### Backend: Python + FastAPI
+### Prerequisites
+- Python 3.13+
+- OpenAI API key
+- Modern web browser
 
-Python is the natural choice for AI workloads - richer ecosystem, more examples, better library support. FastAPI provides async capabilities and built-in SSE support. LangGraph (when introduced in later stages) is Python-native with mature documentation.
+### Quick Start
 
-### Frontend: Svelte
+**1. Backend Setup**
 
-Svelte compiles to vanilla JavaScript with no runtime overhead. This matters because the chat UI must eventually be embeddable as a web component in third-party websites. React and Vue ship their runtimes; Svelte compiles away. First-class web component support via `customElement: true`.
+```bash
+cd backend
+cp .env.example .env
+# Edit .env and add your OPENAI_API_KEY
+uv sync
+```
 
-For professional appearance: Skeleton UI or shadcn-svelte.
+**2. Validate Backend**
+
+```bash
+# Run tests first
+uv run pytest test_main.py -v
+
+# All tests should pass before proceeding
+# Test specification in test_main.py defines behavioral requirements
+```
+
+**3. Start Backend**
+
+```bash
+uv run uvicorn main:app --reload --port 8002
+```
+
+API Documentation: http://127.0.0.1:8002/docs
+
+**4. Test Backend Endpoints**
+
+```bash
+# Create session
+curl -X POST http://127.0.0.1:8002/session
+
+# Chat with session
+curl -X POST http://127.0.0.1:8002/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "What sober events are in Berlin?", "session_id": "YOUR_SESSION_ID"}'
+
+# Chat without session (backward compatible)
+curl -X POST http://127.0.0.1:8002/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Tell me about Berlin sober scene"}'
+```
+
+**5. Start Frontend**
+
+```bash
+# Option 1: Direct file open
+open frontend/index.html
+
+# Option 2: HTTP server (recommended)
+cd frontend
+python -m http.server 8080
+# Open http://localhost:8080
+```
+
+**6. Test Full System**
+
+- Frontend should auto-create a session on load
+- Send messages and verify conversation memory works
+- Refresh page - new session created, previous conversation lost (expected with in-memory storage)
 
 ---
 
-## Frontend/Backend Protocol
+## Current Implementation
 
-### Requirements
-- Stream agent responses in real-time (text deltas, tool calls, status)
-- Support tool display instructions from agent to frontend
-- Accept session context from frontend (user state, page context)
-- Authentication-ready
-- Extensible to voice without full rewrite
+### Status: Stage 1 Complete ✅
 
-### Approach: REST + SSE, then WebSocket
+**Working Features:**
+- REST API with FastAPI
+- Session management (in-memory)
+- Conversation memory across multiple turns
+- OpenAI GPT-4o-mini integration
+- System prompt defines assistant personality
+- CORS enabled for frontend integration
+- Comprehensive test suite with behavioral specifications
 
-Stages 1-3 use REST for requests and SSE for streaming responses. This is simple, standard, and sufficient for text-based interaction. The event schema is designed to port directly to WebSocket when stage 4 introduces voice and true bidirectional communication.
+**API Endpoints:**
 
-### Initial REST Endpoints
 ```
-POST /session              → Initialize session, authenticate, return session ID
-POST /session/{id}/message → Send user message, returns SSE stream
-```
-
-Additional endpoints (context retrieval, history, etc.) will be defined as stages demand them.
-
-### SSE Event Schema
-```
-event: message_delta
-data: {"content": "...", "role": "assistant"}
-
-event: tool_call
-data: {"tool": "...", "args": {...}, "display_hint": "..."}
-
-event: tool_result
-data: {"tool": "...", "result": {...}}
-
-event: error
-data: {"code": "...", "message": "..."}
-
-event: done
-data: {}
+POST /session              → Create new session, returns session_id
+POST /chat                 → Send message (with optional session_id)
 ```
 
-This schema transfers unchanged to WebSocket in stage 4, with added binary frames for audio.
+**Protocol:**
 
----
+```javascript
+// Create session
+POST /session
+Response: {"session_id": "uuid-v4"}
 
-## Backend Architecture
+// Chat with memory
+POST /chat
+Request:  {"message": "...", "session_id": "uuid"}
+Response: {"response": "..."}
 
-### Approach: Monolith First, Decompose Later
-
-The backend starts as a single deployable unit containing:
-- Protocol handling (REST/SSE, later WebSocket)
-- Session management and auth
-- Orchestrator logic
-- Agent implementation(s)
-
-Internal interfaces between these components are kept clean from the start. This allows extraction into separate services when complexity warrants it - external tools via MCP, external agents via A2A - without rewriting the core.
-
-The stable contract with the frontend is the protocol layer (REST/SSE/WebSocket). Internally, orchestrator-to-agent and agent-to-tool interfaces follow the same principle: define the contract, swap implementations freely.
-
----
-
-## Current Implementation Status
-
-### Stage 0.5: Basic Chat (Completed)
-
-We have a working end-to-end chat with OpenAI integration, but without sessions or streaming.
-
-**What's Working:**
-- FastAPI backend with OpenAI GPT-4o-mini
-- HTML/JS frontend with modern UI
-- Single-turn conversations (no history)
-- CORS enabled
-- Error handling
-
-**Current Protocol:**
-```
+// Chat without memory (backward compatible)
 POST /chat
 Request:  {"message": "..."}
 Response: {"response": "..."}
 ```
 
-This is simpler than the target Stage 1 protocol. Next step: add session management and conversation history.
+### Backend Architecture
 
----
-
-## Implementation Details
-
-### Backend
-
-**Stack:** FastAPI + OpenAI GPT-4o-mini
-
-#### Setup
-
-```bash
-cd backend
-cp .env.example .env
-# Add your OPENAI_API_KEY to .env
-uv sync
-```
-
-#### Run
-
-```bash
-cd backend
-uv run uvicorn main:app --reload --port 8002
-```
-
-#### Test
-
-```bash
-cd backend
-uv run pytest test_main.py -v
-```
-
-#### API
-
-```bash
-curl -X POST http://127.0.0.1:8002/chat \
-  -H "Content-Type: application/json" \
-  -d '{"message": "What sober events are in Berlin?"}'
-```
-
-API Docs: http://127.0.0.1:8002/docs
-
-#### Structure
-
+**Structure:**
 ```
 backend/
-├── main.py          # FastAPI app + OpenAI integration
-├── test_main.py     # pytest suite
-├── pyproject.toml   # uv dependencies
-└── .env             # API keys
+├── main.py              # FastAPI app, session management, OpenAI integration
+├── test_main.py         # Test suite with behavioral specifications
+├── pyproject.toml       # uv dependencies
+├── .env.example         # Environment template
+└── .env                 # Your API keys (gitignored)
 ```
 
-### Frontend
+**Key Implementation Details:**
 
-**Stack:** Plain HTML + JavaScript (no build step)
+*Session Storage:* In-memory dictionary mapping session IDs to conversation history. Each session contains: system prompt + all user/assistant message pairs. Sessions are ephemeral (lost on restart).
 
-#### Run
+*Conversation Flow:*
+1. User sends message with session_id
+2. Backend appends user message to session history
+3. Full history sent to OpenAI API
+4. Assistant response appended to session history
+5. Response returned to user
 
-```bash
-# Simply open in browser
-open frontend/index.html
+*System Prompt:* Defines assistant as Berlin sober scene expert. Focuses on alcohol-free events, wellness activities, conscious community. See `SYSTEM_PROMPT` in `main.py`.
 
-# Or serve via HTTP server
-cd frontend
-python -m http.server 8080
-# Then open http://localhost:8080
-```
+*Testing:* Test specification at top of `test_main.py` defines 7 core behavioral requirements. Tests validate behavior, not implementation details.
 
-#### Features
+### Frontend Architecture
 
-- Modern gradient UI design
-- Real-time message display
-- Loading indicators
-- Error handling with user feedback
-- Keyboard support (Enter to send)
-- Auto-scrolling chat area
-- Responsive layout
-
-#### Structure
-
+**Structure:**
 ```
 frontend/
-└── index.html       # Complete chat UI (HTML + CSS + JS)
+└── index.html          # Complete chat UI (HTML + CSS + JS in single file)
 ```
 
-#### Configuration
+**Implementation:** Plain HTML/JS with modern gradient UI. No build step required.
 
-The frontend connects to the backend via:
-```javascript
-const API_URL = 'http://127.0.0.1:8002/chat';
-```
+**Features:**
+- Auto-creates session on page load
+- Sends session_id with all messages
+- Real-time message display
+- Loading indicators and error handling
+- Keyboard shortcuts (Enter to send)
+- Auto-scrolling chat
 
-Change this URL if running the backend on a different host/port.
+**Configuration:**
+Backend URL set in JavaScript: `const API_URL = 'http://127.0.0.1:8002/chat'`
 
 ---
 
-## Next: Upgrade to Stage 1
+## Next: Prioritized User Stories
 
-**Goal:** Add session management and conversation history (REST, not yet SSE).
+### High Priority
 
-### Protocol Design
+**US-1: Streaming Responses with SSE**
+*As a user, I want to see the assistant's response appear word-by-word in real-time*
+- Implement SSE endpoint for message streaming
+- Update frontend to consume SSE stream
+- Maintain backward compatibility with REST
 
-#### Session Management
+**US-2: Persistent Session Storage**
+*As a user, I want my conversations to survive server restarts*
+- Replace in-memory sessions with Redis or SQLite
+- Add session expiration (e.g., 24 hours)
+- Add session retrieval endpoint
 
+**US-3: Conversation History UI**
+*As a user, I want to see my full conversation history on page load*
+- Add `GET /session/{id}/history` endpoint
+- Frontend loads and displays previous messages
+- Handle long conversations (pagination or infinite scroll)
+
+### Medium Priority
+
+**US-4: System Prompt Configuration**
+*As a developer, I want to customize the assistant's personality without code changes*
+- Move system prompt to configuration file or environment variable
+- Add prompt template support for dynamic context injection
+- Document prompt engineering best practices
+
+**US-5: Rate Limiting and Usage Tracking**
+*As an operator, I want to prevent abuse and track API usage*
+- Implement rate limiting per session/IP
+- Add usage metrics (message count, token usage)
+- Add simple admin dashboard
+
+**US-6: Multi-Session Management**
+*As a user, I want to manage multiple conversation threads*
+- Add session naming/description
+- List all user sessions
+- Delete/archive sessions
+
+### Low Priority
+
+**US-7: Tool Integration - Web Search**
+*As a user, I want current event information from the web*
+- Add inline tool for web search
+- Assistant can search for current Berlin events
+- Display sources in UI
+
+**US-8: Export Conversations**
+*As a user, I want to export my chat history*
+- Add export endpoint (JSON, markdown, PDF)
+- Frontend download button
+- Privacy controls
+
+**US-9: Migrate to Svelte + Web Components**
+*As a developer, I want a maintainable, embeddable frontend*
+- Rewrite frontend in Svelte
+- Build as web component
+- Maintain API compatibility
+
+---
+
+## Protocol Evolution Plan
+
+Current protocol (REST) is intentionally simple. Future protocols maintain backward compatibility:
+
+**Stage 2 (SSE):**
 ```
-POST /session
-Response: {"session_id": "uuid-v4"}
+POST /session/{id}/message → Returns SSE stream
+Events: message_delta, tool_call, tool_result, error, done
 ```
 
-Creates a new session and returns a unique identifier. The frontend stores this ID and includes it in subsequent requests.
-
-#### Chat with History
-
+**Stage 5 (WebSocket):**
 ```
-POST /chat
-Request:  {"session_id": "uuid", "message": "..."}
-Response: {"response": "..."}
+WS /session/{id}/stream
+Same event schema as SSE + binary frames for audio
 ```
 
-Backend maintains conversation history per session. Each message includes the full context of previous messages in that session.
-
-#### Session Storage
-
-**Implementation:** In-memory dictionary
-```python
-sessions = {
-    "session-uuid-1": [
-        {"role": "system", "content": "..."},
-        {"role": "user", "content": "..."},
-        {"role": "assistant", "content": "..."}
-    ]
-}
-```
-
-**Note:** This is ephemeral. Sessions are lost on server restart. For production, use Redis or a database.
-
-#### Frontend Changes
-
-1. On page load: `POST /session` → store `session_id`
-2. On send message: Include `session_id` in request
-3. Messages accumulate in conversation history
-
-### Implementation Plan
-
-- [ ] Add session creation endpoint
-- [ ] Add in-memory session storage
-- [ ] Update chat endpoint to accept session_id
-- [ ] Store conversation history per session
-- [ ] Update frontend to request session on load
-- [ ] Update frontend to send session_id with messages
-- [ ] Test multi-turn conversations
-
-After this works, we'll upgrade to SSE streaming (Stage 1 full).
+Each protocol layer is designed to migrate forward without breaking existing clients.
