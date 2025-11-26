@@ -55,11 +55,11 @@ Wire everything together and verify it works.
 
 ## Implementation Checklist
 
-- [ ] Phase 1: Backend
-  - [ ] Create FastAPI app with `/chat` endpoint
-  - [ ] Add text reversal logic
-  - [ ] Add CORS middleware
-  - [ ] Test with curl
+- [x] Phase 1: Backend
+  - [x] Create FastAPI app with `/chat` endpoint
+  - [x] Add text reversal logic
+  - [x] Add CORS middleware
+  - [x] Test with curl
 
 - [ ] Phase 2: Frontend
   - [ ] Create HTML chat interface
@@ -77,8 +77,7 @@ Wire everything together and verify it works.
 ### Backend
 ```bash
 cd backend
-pip install fastapi uvicorn
-uvicorn main:app --reload --port 8000
+uv run uvicorn main:app --reload --port 8001
 ```
 
 ### Frontend
