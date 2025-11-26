@@ -1,0 +1,68 @@
+{
+    "jsonrpc": "2.0",
+    "id": 2,
+    "result": {
+        "tools": [
+            {
+                "name": "search",
+                "description": "Search the index for documents matching the given query.\n\nThis function queries the index with a fixed course filter and \npredefined boost weights for specific fields.\n\nArgs:\n    query (str): The search query string.\n\nReturns:\n    List[Dict[str, Any]]: A list of search result objects returned \n    by `index.search()`. Each result is represented as a dictionary.",
+                "inputSchema": {
+                    "properties": {
+                        "query": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "query"
+                    ],
+                    "type": "object"
+                },
+                "outputSchema": {
+                    "properties": {
+                        "result": {
+                            "items": {
+                                "additionalProperties": true,
+                                "type": "object"
+                            },
+                            "type": "array"
+                        }
+                    },
+                    "required": [
+                        "result"
+                    ],
+                    "type": "object",
+                    "x-fastmcp-wrap-result": true
+                },
+                "_meta": {
+                    "_fastmcp": {
+                        "tags": []
+                    }
+                }
+            },
+            {
+                "name": "add_entry",
+                "description": "Add a new question–answer entry to the index.\n\nThis function constructs a document with the provided question\nand answer, tags it as user-added, and appends it to the index\nunder the 'data-engineering-zoomcamp' course.\n\nArgs:\n    question (str): The question text to store.\n    answer (str): The corresponding answer text.\n\nReturns:\n    None",
+                "inputSchema": {
+                    "properties": {
+                        "question": {
+                            "type": "string"
+                        },
+                        "answer": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "question",
+                        "answer"
+                    ],
+                    "type": "object"
+                },
+                "_meta": {
+                    "_fastmcp": {
+                        "tags": []
+                    }
+                }
+            }
+        ]
+    }
+}
