@@ -99,13 +99,42 @@ Internal interfaces between these components are kept clean from the start. This
 
 The stable contract with the frontend is the protocol layer (REST/SSE/WebSocket). Internally, orchestrator-to-agent and agent-to-tool interfaces follow the same principle: define the contract, swap implementations freely.
 
-### Implementaiton
+---
 
-FastAPI + OpenAI GPT-4o-mini
+## Current Implementation Status
+
+### Stage 0.5: Basic Chat (Completed)
+
+We have a working end-to-end chat with OpenAI integration, but without sessions or streaming.
+
+**What's Working:**
+- FastAPI backend with OpenAI GPT-4o-mini
+- HTML/JS frontend with modern UI
+- Single-turn conversations (no history)
+- CORS enabled
+- Error handling
+
+**Current Protocol:**
+```
+POST /chat
+Request:  {"message": "..."}
+Response: {"response": "..."}
+```
+
+This is simpler than the target Stage 1 protocol. Next step: add session management and conversation history.
+
+---
+
+## Implementation Details
+
+### Backend
+
+**Stack:** FastAPI + OpenAI GPT-4o-mini
 
 #### Setup
 
 ```bash
+cd backend
 cp .env.example .env
 # Add your OPENAI_API_KEY to .env
 uv sync
@@ -114,12 +143,14 @@ uv sync
 #### Run
 
 ```bash
+cd backend
 uv run uvicorn main:app --reload --port 8002
 ```
 
 #### Test
 
 ```bash
+cd backend
 uv run pytest test_main.py -v
 ```
 
@@ -131,7 +162,7 @@ curl -X POST http://127.0.0.1:8002/chat \
   -d '{"message": "What sober events are in Berlin?"}'
 ```
 
-Docs: http://127.0.0.1:8002/docs
+API Docs: http://127.0.0.1:8002/docs
 
 #### Structure
 
@@ -143,98 +174,104 @@ backend/
 └── .env             # API keys
 ```
 
-
----
----
-
-# TODO MERGE THIS IN OR REMOVE 
-
-Build a simple chat assistant with a backend API and frontend interface.
-
-## Goal
-
-Create a working chat interface where:
-1. User types a message in a web frontend
-2. Frontend sends message to backend API
-3. Backend processes and returns a response
-4. Frontend displays the response
-
-## Plan
-
-### Phase 1: Backend (No LLM - Text Reversal Logic)
-
-Create a minimal backend that receives text and returns it reversed.
-
-**Tech choice:** Python + FastAPI
-- Simple, fast to set up
-- Built-in OpenAPI docs
-- Easy async support
-
-**Steps:**
-1. Create `main.py` with FastAPI app
-2. Add POST `/chat` endpoint accepting `{"message": "..."}`
-3. Return `{"response": "..."}` with reversed text
-4. Add CORS middleware for frontend access
-
-### Phase 2: Frontend (Simple Chat UI)
-
-Create a minimal web interface to interact with the backend.
-
-**Tech choice:** Plain HTML + JavaScript
-- No build step required
-- Serves from a simple static file
-- Easy to understand and modify
-
-**Steps:**
-1. Create `index.html` with chat interface
-2. Add message input and send button
-3. Display conversation history
-4. Connect to backend via fetch API
-
-### Phase 3: Integration & Testing
-
-Wire everything together and verify it works.
-
-**Steps:**
-1. Run backend server
-2. Open frontend in browser
-3. Send test messages and verify reversed responses appear
-
----
-
-## Implementation Checklist
-
-- [x] Phase 1: Backend
-  - [x] Create FastAPI app with `/chat` endpoint
-  - [x] Add text reversal logic
-  - [x] Add CORS middleware
-  - [x] Test with curl
-
-- [ ] Phase 2: Frontend
-  - [ ] Create HTML chat interface
-  - [ ] Add JavaScript for API calls
-  - [ ] Style for basic usability
-
-- [ ] Phase 3: Integration
-  - [ ] Run both services
-  - [ ] Verify end-to-end chat works
-
----
-
-## Running the Application
-
-### Backend
-```bash
-cd backend
-uv run uvicorn main:app --reload --port 8001
-```
-
 ### Frontend
+
+**Stack:** Plain HTML + JavaScript (no build step)
+
+#### Run
+
 ```bash
-# Simply open frontend/index.html in a browser
-# Or serve it:
+# Simply open in browser
+open frontend/index.html
+
+# Or serve via HTTP server
 cd frontend
-python -m http.server 3000
+python -m http.server 8080
+# Then open http://localhost:8080
 ```
 
-Then open http://localhost:3000 in your browser.
+#### Features
+
+- Modern gradient UI design
+- Real-time message display
+- Loading indicators
+- Error handling with user feedback
+- Keyboard support (Enter to send)
+- Auto-scrolling chat area
+- Responsive layout
+
+#### Structure
+
+```
+frontend/
+└── index.html       # Complete chat UI (HTML + CSS + JS)
+```
+
+#### Configuration
+
+The frontend connects to the backend via:
+```javascript
+const API_URL = 'http://127.0.0.1:8002/chat';
+```
+
+Change this URL if running the backend on a different host/port.
+
+---
+
+## Next: Upgrade to Stage 1
+
+**Goal:** Add session management and conversation history (REST, not yet SSE).
+
+### Protocol Design
+
+#### Session Management
+
+```
+POST /session
+Response: {"session_id": "uuid-v4"}
+```
+
+Creates a new session and returns a unique identifier. The frontend stores this ID and includes it in subsequent requests.
+
+#### Chat with History
+
+```
+POST /chat
+Request:  {"session_id": "uuid", "message": "..."}
+Response: {"response": "..."}
+```
+
+Backend maintains conversation history per session. Each message includes the full context of previous messages in that session.
+
+#### Session Storage
+
+**Implementation:** In-memory dictionary
+```python
+sessions = {
+    "session-uuid-1": [
+        {"role": "system", "content": "..."},
+        {"role": "user", "content": "..."},
+        {"role": "assistant", "content": "..."}
+    ]
+}
+```
+
+**Note:** This is ephemeral. Sessions are lost on server restart. For production, use Redis or a database.
+
+#### Frontend Changes
+
+1. On page load: `POST /session` → store `session_id`
+2. On send message: Include `session_id` in request
+3. Messages accumulate in conversation history
+
+### Implementation Plan
+
+- [ ] Add session creation endpoint
+- [ ] Add in-memory session storage
+- [ ] Update chat endpoint to accept session_id
+- [ ] Store conversation history per session
+- [ ] Update frontend to request session on load
+- [ ] Update frontend to send session_id with messages
+- [ ] Test multi-turn conversations
+
+After this works, we'll upgrade to SSE streaming (Stage 1 full).

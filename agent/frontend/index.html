@@ -238,11 +238,13 @@
     </div>
 
     <script>
-        const API_URL = 'http://127.0.0.1:8002/chat';
+        const SESSION_API_URL = 'http://127.0.0.1:8002/session';
+        const CHAT_API_URL = 'http://127.0.0.1:8002/chat';
         const chatMessages = document.getElementById('chatMessages');
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendButton');
 
+        let sessionId = null;
         let isLoading = false;
 
         function addMessage(content, role) {
@@ -300,10 +302,32 @@
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
 
+        async function createSession() {
+            try {
+                const response = await fetch(SESSION_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to create session');
+                }
+
+                const data = await response.json();
+                sessionId = data.session_id;
+                console.log('Session created:', sessionId);
+            } catch (error) {
+                showError('Failed to initialize session. Please refresh the page.');
+                console.error('Session creation error:', error);
+            }
+        }
+
         async function sendMessage() {
             const message = messageInput.value.trim();
 
-            if (!message || isLoading) {
+            if (!message || isLoading || !sessionId) {
                 return;
             }
 
@@ -315,12 +339,15 @@
             showLoading();
 
             try {
-                const response = await fetch(API_URL, {
+                const response = await fetch(CHAT_API_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ message: message })
+                    body: JSON.stringify({
+                        message: message,
+                        session_id: sessionId
+                    })
                 });
 
                 hideLoading();
@@ -350,7 +377,10 @@
             }
         });
 
-        messageInput.focus();
+        // Initialize session on page load
+        createSession().then(() => {
+            messageInput.focus();
+        });
     </script>
 </body>
 </html>
