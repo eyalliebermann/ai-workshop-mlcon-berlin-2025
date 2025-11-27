@@ -4,20 +4,33 @@
 Playground for solution architects to experiment with patterns, protocols, and frameworks for conversational AI systems. Current implementation: Berlin sober scene assistant with conversation memory.
 
 ## Development Philosophy
-Agile and lean. Each stage ends with a **working demo**. Complexity increases incrementally.
+Lean Agile development in short cycles by a single engineer. Each should prodocce a **working demo**. Complexity is kept at minimum and is always serving the features demonstrated. 
 
-**Core principle:** Start simple, introduce complexity only when needed. Commit to protocols, not stacks.
+**Core principle:** Start simple, introduce complexity only when needed. Commit to protocols, not stacks. 
 
 ## Roadmap
 
-### Complexity Stages
-1. ✅ Single agent, conversation memory - REST protocol established
-2. ⏭️ Server-sent events (SSE) for streaming responses
-3. Single agent + inline tools
-4. Single agent + MCP tools
-5. WebSocket migration + voice
+### Development Stages
+1. ✅ Single Assistant, no conversation memory - REST chat protocol established
+2. ✅ Single agent with conversation memory - REST session protocol established
+3. Single agent + inline tools integration
+4. Single agent + MCP tools integration
+5. ⏭️ Server-sent events (SSE) for streaming responses
 6. Multi-agent orchestration
-7. Agent-to-agent communication (A2A)
+13. Agent-to-agent communication (A2A) protocol
+multi agent delegation
+
+
+11. Introduce monitoring dashboards
+12. Introduce guardrails for safety
+7. Web component integration for embeddability
+8. Add authentication layer
+9. Deploy to public cloud
+10. Add persistent session database
+14. WebSocket migration + voice support
+15. Open to multiple users
+16. Monitor for security and compliance
+17. Connect with personal information based on user token
 
 ### Stack Rationale
 
@@ -32,9 +45,9 @@ Compiles to vanilla JavaScript with no runtime. Critical for web component embed
 ## Getting Started
 
 ### Prerequisites
-- Python 3.13+
+- Python 3.12 for maximal compatibility
 - OpenAI API key
-- Modern web browser
+- Modern web browser - e.g. Chrome/ Safari
 
 ### Quick Start
 
